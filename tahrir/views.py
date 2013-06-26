@@ -40,6 +40,67 @@ def admin(request):
     else:
         awarded_assertions = None
 
+    # Handle any admin actions. These are done through POSTS via the
+    # HTML forms on the admin panel.
+    if request.POST:
+        if request.POST.get('add-person'):
+            # Email is a required field on the HTML form.
+            # Add a Badge to the DB.
+            request.db.add_person(request.POST.get('person-email'),
+                                  nickname=request.POST.get(
+                                            'person-nickname'),
+                                  website=request.POST.get(
+                                            'person-website'),
+                                  bio=request.POST.get(
+                                            'person-bio'))
+        elif request.POST.get('add-badge'):
+            # Add a Badge to the DB.
+            request.db.add_badge(request.POST.get('badge-name'),
+                                 request.POST.get('badge-image'),
+                                 request.POST.get('badge-description'),
+                                 request.POST.get('badge-criteria'),
+                                 request.POST.get('badge-issuer'),
+                                 request.POST.get('badge-tags'))
+        elif request.POST.get('add-invitation'):
+            # Add an Invitation to the DB.
+            try:
+                created_on = datetime.strptime(
+                                request.POST.get('invitation-created'),
+                                '%Y-%m-%d %H:%M')
+            except ValueError:
+                created_on = None # Will default to datetime.now()
+
+            try:
+                expires_on = datetime.strptime(
+                                request.POST.get('invitation-expires'),
+                                '%Y-%m-%d %H:%M')
+            except ValueError:
+                expires_on = None # Will default to datettime.now()
+            request.db.add_invitation(
+                    request.POST.get('invitation-badge-id'),
+                    created_on=request.POST.get('invitation-created'),
+                    expires_on=request.POST.get('invitation-expires'),
+                    created_by=request.POST.get('invitation-issuer-id'))
+        elif request.POST.get('add-issuer'):
+            # Add an Issuer to the DB.
+            request.db.add_issuer(
+                    request.POST.get('issuer-origin'),
+                    request.POST.get('issuer-name'),
+                    request.POST.get('issuer-org'),
+                    request.POST.get('issuer-contact'))
+        elif request.POST.get('add-assertion'):
+            # Add an Assertion to the DB.
+            try:
+                issued_on = datetime.strptime(
+                                request.POST.get('assertion-issued-on'),
+                                '%Y-%m-%d %H:%M')
+            except ValueError:
+                issued_on = None # Will default to datetime.now()
+            request.db.add_assertion(
+                    request.POST.get('assertion-badge-id'),
+                    request.POST.get('assertion-person-email'),
+                    issued_on)
+
     return dict(
         auth_principals=effective_principals(request),
         awarded_assertions=awarded_assertions,
