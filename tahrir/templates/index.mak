@@ -43,7 +43,7 @@
 		<h2 class="section-header">Top Contributors</h2>
 		<div class="padded-content">
 			<table>
-			% for person in sorted(sorted(top_persons, key=top_persons.get, reverse=True), key=lambda person: person.id):
+			% for person in top_persons_sorted:
 				<tr><td><a href="${request.route_url('user', id=person.id)}">
 						${person.email}</a>
 						with <strong>${top_persons[person]}
