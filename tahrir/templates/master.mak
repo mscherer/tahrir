@@ -13,6 +13,7 @@
     </script>
 	<script type="text/javascript" src="${request.static_url('tahrir:static/js/popup.js')}"></script>
     % if logged_in and awarded_assertions:
+	<!--
       <script
         type="text/javascript"
         src="http://beta.openbadges.org/issuer.js">
@@ -33,6 +34,7 @@
           OpenBadges.issue(urls, callback);
         }
       </script>
+		-->
     % endif
     <title>${title}</title>
   </head>
