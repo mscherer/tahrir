@@ -466,8 +466,18 @@ def login_complete_view(request):
         domain = '.'.join(ident.split('.')[:-2])
         email = nickname + "@" + domain
 
-    if not request.db.get_person(email):
+    if not request.db.get_person(nickname=nickname):
+        # They are not in our db at all.
         request.db.add_person(email=email, nickname=nickname)
+    elif not request.db.get_person(email):
+        # They are in the db, but just with a different email.
+        # Let's change that.
+        person = request.db.get_person(nickname=nickname)
+        person.email = email
+    else:
+        # They are in the db and they already have the same
+        # email, so we chill out.
+        pass
 
     headers = remember(request, email)
     response = HTTPFound(location=request.session['came_from'])
