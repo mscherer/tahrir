@@ -6,7 +6,7 @@
       <h1 class="section-header">Your Rank</h1>
       <div class="padded-content">
         % if logged_in:
-          % if rank == 0:
+          % if not rank:
             <p>
               You are not ranked yet. There are ${user_count} ranked users.
             </p>

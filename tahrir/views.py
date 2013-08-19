@@ -307,16 +307,9 @@ def invitation_qrcode(request):
 @view_config(route_name='leaderboard', renderer='leaderboard.mak')
 def leaderboard(request):
     """ Render a top users view. """
-    if authenticated_userid(request):
-        awarded_assertions = request.db.get_assertions_by_email(
-                                authenticated_userid(request))
-    else:
-        awarded_assertions = None
-
-    leaderboard = request.db.session.query(m.Person, func.count(
-        m.Person.assertions)).join(m.Assertion).order_by(
-            'count_1 desc').filter(m.Person.opt_out == False).group_by(
-                m.Person).all()
+    query = request.db.session.query(m.Person).filter(m.Person.rank!=None)
+    leaderboard = query.order_by(m.Person.rank).limit(25).all()
+    user_count = query.count()
 
     # Hackishly, but relatively cheaply get the rank of all users.
     # This is:
@@ -329,12 +322,12 @@ def leaderboard(request):
     user_to_rank = dict(
         [
             [
-                data[0],
+                person,
                 {
-                    'badges': data[1],
+                    'badges': len(person.assertions),
                     'rank': idx + 1
                 }
-            ] for idx, data in enumerate(leaderboard)
+            ] for idx, person in enumerate(leaderboard)
         ]
     )
 
@@ -345,28 +338,35 @@ def leaderboard(request):
         user = request.db.get_person(
             person_email=authenticated_userid(request))
 
-        # Get rank.
-        idx = [i[0] for i in leaderboard].index(user)
-        rank = idx + 1
-        # Handle the case of leaderboard[-2:2] which will be [] always.
-        if idx < 2:
-            idx = 2
-        competitors = [c[0] for c in leaderboard[(idx - 2):(idx + 3)]]
+        if user.rank:
+            # Get rank.
+            idx = user.rank - 1
+            # Handle the case of leaderboard[-2:2] which will be [] always.
+            if idx < 2:
+                idx = 2
+            competitors = [c[0] for c in leaderboard[(idx - 2):(idx + 3)]]
 
-        try:
-            percentile = (float(user_to_rank[user]['rank']) / float(user_count)) * 100
-        except ZeroDivisionError:
-            percentile = 0
+            try:
+                percentile = (float(user.rank) / float(user_count)) * 100
+            except ZeroDivisionError:
+                percentile = 0
 
+            awarded_assertions = user.assertions
+        else:
+            rank = None
+            percentile = None
+            competitors = None
+            awarded_assertions = None
     else:
         rank = None
         percentile = None
         competitors = None
+        awarded_assertions = None
 
     return dict(
             auth_principals=effective_principals(request),
             awarded_assertions=awarded_assertions,
-            top_persons_sorted=[x[0] for x in leaderboard],
+            top_persons_sorted=leaderboard,
             rank=rank,
             user_count=user_count,
             percentile=percentile,
