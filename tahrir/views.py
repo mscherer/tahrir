@@ -13,6 +13,7 @@ import markupsafe
 from datetime import datetime
 
 from mako.template import Template as t
+from webhelpers import feedgenerator
 from pyramid.view import (
     view_config,
     forbidden_view_config,
@@ -34,7 +35,6 @@ from pyramid.security import (
 )
 from pyramid.settings import asbool
 
-from tahrir_api.dbapi import TahrirDatabase
 import tahrir_api.model as m
 
 from tahrir.utils import strip_tags, generate_badge_yaml
@@ -45,12 +45,6 @@ from moksha.wsgi.widgets.api import get_moksha_socket, LiveWidget
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import func
 
-# Optional.  Emit messages to the fedmsg bus.
-fedmsg = None
-try:
-    import fedmsg
-except ImportError:
-    pass
 
 def _get_user(request, id_or_nickname):
     '''Attempt to get a user by their id or nickname, returning None if
@@ -144,26 +138,6 @@ def admin(request):
                     request.POST.get('assertion-badge-id'),
                     request.POST.get('assertion-person-email'),
                     issued_on)
-
-            if fedmsg and settings.get('tahrir.use_fedmsg', False):
-                person = request.db.get_person(
-                    person_email=request.POST.get('assertion-person-email'))
-                badge = request.db.get_badge(
-                    badge_id=request.POST.get('assertion-badge-id'))
-
-                fedmsg.publish(
-                    modname="fedbadges", topic="badge.award",
-                    msg=dict(
-                        badge=dict(
-                            name=badge.name,
-                            description=badge.description,
-                            image_url=badge.image,
-                        ),
-                        user=dict(
-                            username=person.nickname,
-                            badges_user_id=person.id
-                        ),
-                    ))
 
     return dict(
         auth_principals=effective_principals(request),
@@ -265,22 +239,6 @@ def invitation_claim(request):
     result = request.db.add_assertion(request.context.badge_id,
                                       person.email,
                                       datetime.now())
-
-    if fedmsg and settings.get('tahrir.use_fedmsg', False):
-        badge = request.context.badge
-        fedmsg.publish(
-            modname="fedbadges", topic="badge.award",
-            msg=dict(
-                badge=dict(
-                    name=badge.name,
-                    description=badge.description,
-                    image_url=badge.image,
-                ),
-                user=dict(
-                    username=person.nickname,
-                    badges_user_id=person.id
-                ),
-            ))
 
     # TODO -- return them to a page that auto-exports their badges.
     # TODO -- flash and tell them they got the badge
@@ -547,7 +505,7 @@ def badge(request):
         awarded_assertions = request.db.get_assertions_by_email(
                                 authenticated_userid(request))
     else:
-        awarded_assertions = None
+        awarded_assertions = []
 
     # Get badge statistics.
     # TODO: Perhaps abstract these statistics methods away somewhere?
@@ -674,6 +632,94 @@ def badge_json(request):
         return {"error": "No such badge exists."}
 
     return _badge_json_generator(request, badge_id, badge)
+
+
+@view_config(route_name='badge_rss')
+def badge_rss(request):
+    """ Render per-badge rss. """
+
+    badge_id = request.matchdict.get('id')
+    badge = request.db.get_badge(badge_id)
+
+    if not badge:
+        raise HTTPNotFound("No such badge %r" % badge_id)
+
+    comparator = lambda x, y: cmp(x.issued_on, y.issued_on)
+    sorted_assertions = sorted(badge.assertions, cmp=comparator, reverse=True)
+
+    feed = feedgenerator.Rss201rev2Feed(
+        title=u"Badges Feed for %s" % badge.name,
+        link=request.route_url('badge', id=badge.id),
+        description=u"Latest recipients of the badge %s" % badge.name,
+        language=u"en",
+    )
+
+    description_template = "<img src='%s' alt='%s' />%s"
+
+    for assertion in sorted_assertions:
+        url = request.route_url(
+            'user', id=assertion.person.nickname or assertion.person.id)
+        feed.add_item(
+            title=assertion.person.nickname,
+            link=url,
+            pubdate=assertion.issued_on,
+            description=description_template % (
+                assertion.person.avatar_url(128),
+                assertion.person.nickname,
+                assertion.person.nickname,
+            )
+        )
+
+    return Response(
+        body=feed.writeString('utf-8'),
+        content_type='application/rss+xml',
+        charset='utf-8',
+    )
+
+
+@view_config(route_name='user_rss')
+def user_rss(request):
+    """ Render per-user rss. """
+
+    user_id = request.matchdict.get('id')
+    user = _get_user(request, user_id)
+
+    if not user:
+        raise HTTPNotFound("No such user %r" % user_id)
+
+    if user.opt_out == True and user.email != authenticated_userid(request):
+        raise HTTPNotFound("User %r has opted out." % user_id)
+
+    comparator = lambda x, y: cmp(x.issued_on, y.issued_on)
+    sorted_assertions = sorted(user.assertions, cmp=comparator, reverse=True)
+
+    feed = feedgenerator.Rss201rev2Feed(
+        title=u"Badges Feed for %s" % user.nickname,
+        link=request.route_url('user', id=user.nickname or user.id),
+        description=u"The latest Fedora Badges obtained by %s" % user.nickname,
+        language=u"en",
+    )
+
+    description_template = "<img src='%s' alt='%s'/>%s -- %s"
+
+    for assertion in sorted_assertions:
+        feed.add_item(
+            title=assertion.badge.name,
+            link=request.route_url('badge', id=assertion.badge.id),
+            pubdate=assertion.issued_on,
+            description=description_template % (
+                assertion.badge.image,
+                assertion.badge.name,
+                assertion.badge.name,
+                assertion.badge.description,
+            )
+        )
+
+    return Response(
+        body=feed.writeString('utf-8'),
+        content_type='application/rss+xml',
+        charset='utf-8',
+    )
 
 
 @view_config(route_name='user', renderer='user.mak')

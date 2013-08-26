@@ -18,6 +18,7 @@ from .utils import (
     make_relative_time_property,
     make_openid_identifier_property,
 )
+import notifications
 
 from tahrir_api.dbapi import TahrirDatabase
 import tahrir_api.model
@@ -58,7 +59,8 @@ def main(global_config, **settings):
             calling anywhere.
         """
         session = session_cls()
-        return TahrirDatabase(session=session, autocommit=False)
+        return TahrirDatabase(session=session, autocommit=False,
+                              notification_callback=notifications.callback)
 
     required_keys = [
         'tahrir.pngs.uri',
@@ -133,6 +135,7 @@ def main(global_config, **settings):
     config.add_route('qrcode', '/qrcode')
     config.add_route('badge', '/badge/{id}')
     config.add_route('badge_json', '/badge/{id}/json')
+    config.add_route('badge_rss', '/badge/{id}/rss')
     config.add_route('builder', '/builder')
     config.add_route('about', '/about')
     config.add_route('explore', '/explore')
@@ -143,6 +146,7 @@ def main(global_config, **settings):
     config.add_route('tags', '/tags/{tags}/{match}')
     config.add_route('user', '/user/{id}')
     config.add_route('user_json', '/user/{id}/json')
+    config.add_route('user_rss', '/user/{id}/rss')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
 

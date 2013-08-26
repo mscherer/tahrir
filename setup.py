@@ -19,6 +19,7 @@ requires = [
     'docutils',
     "python-dateutil",
     "moksha.wsgi>=1.2.1",
+    "webhelpers",
 
     # For qrcode to work from PyPI, you also need Pillow.
     # This is handled for us in Fedora because python-qrcode pulls in the
@@ -31,7 +32,7 @@ requires = [
     ]
 
 setup(name='tahrir',
-      version='0.3.5',
+      version='0.4.0',
       description='A pyramid app for issuing your own Open Badges',
       long_description=README,
       license="AGPLv3+ with additional permission",
