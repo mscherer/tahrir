@@ -53,36 +53,36 @@ def strip_tags(_d):
 
 def generate_badge_yaml(postdict):
     return "%YAML 1.2\n"\
-         "---\n"\
-         "\n"\
-         "# This is some metadata about the badge.\n"\
-         "name:           " + postdict.get('badge-name', default="") + "\n"\
-         "description:    " + postdict.get('badge-description',
-                                            default="") + "\n"\
-         "creator:        " + postdict.get('badge-creator',
-                                            default="") + "\n"\
-         "\n"\
-         "# This is a link to the discussion about adopting this as\n"\
-         "a for-real badge\n"\
-         "discussion:     " + postdict.get('discussion', default="") + "\n"\
-         "\n"\
-         "# A link to the image for the badge.\n"\
-         "image_url:      " + postdict.get('image', default="") + "\n"\
-         "\n"\
-         "# The issuer.\n"\
-         "issuer_id:      " + postdict.get('issuer', default="") + "\n"\
-         "\n"\
-         "# We'll perform our more costly check (defined below)\n"\
-         "# only when we receive messages that match this trigger.\n"\
-         "trigger:\n"\
-         "  topic:        " + postdict.get('trigger-topic',
-                                            default="") + "\n"\
-         "\n"\
-         "# Once the check has been triggered, this defines what we\n"\
-         "# actually check.\n"\
-         "criteria:       " + postdict.get('criteria',
-                                            default="") + "\n"\
-         "(This section is under construction.)"
+        "---\n"\
+        "\n"\
+        "# This is some metadata about the badge.\n"\
+        "name:           " + postdict.get('badge-name', default="") + "\n"\
+        "description:    " + postdict.get('badge-description',
+                                          default="") + "\n"\
+        "creator:        " + postdict.get('badge-creator',
+                                          default="") + "\n"\
+        "\n"\
+        "# This is a link to the discussion about adopting this as\n"\
+        "a for-real badge\n"\
+        "discussion:     " + postdict.get('discussion', default="") + "\n"\
+        "\n"\
+        "# A link to the image for the badge.\n"\
+        "image_url:      " + postdict.get('image', default="") + "\n"\
+        "\n"\
+        "# The issuer.\n"\
+        "issuer_id:      " + postdict.get('issuer', default="") + "\n"\
+        "\n"\
+        "# We'll perform our more costly check (defined below)\n"\
+        "# only when we receive messages that match this trigger.\n"\
+        "trigger:\n"\
+        "  topic:        " + postdict.get('trigger-topic',
+                                          default="") + "\n"\
+        "\n"\
+        "# Once the check has been triggered, this defines what we\n"\
+        "# actually check.\n"\
+        "criteria:       " + postdict.get('criteria',
+                                          default="") + "\n"\
+        "(This section is under construction.)"
 
 
 def make_avatar_method(cache):
@@ -114,7 +114,8 @@ def make_avatar_method(cache):
         # Once those are resolved we can use pylibravatar again.
         return "https://seccdn.libravatar.org/avatar/%s?%s" % (hash, query)
 
-        gravatar_url = "https://secure.gravatar.com/avatar/%s?%s" % (hash, query)
+        gravatar_url = "https://secure.gravatar.com/avatar/%s?%s" % (
+            hash, query)
 
         if libravatar:
             return libravatar.libravatar_url(
@@ -139,15 +140,16 @@ def singularize(term, value):
     else:
         return term
 
+
 def make_relative_time_property(attr):
 
     SHORT_DENOMINATIONS = {
-            'years': 'yrs',
-            'months': 'mons',
-            'days': 'days',
-            'hours': 'hrs',
-            'minutes': 'mins',
-            'seconds': 'secs',
+        'years': 'yrs',
+        'months': 'mons',
+        'days': 'days',
+        'hours': 'hrs',
+        'minutes': 'mins',
+        'seconds': 'secs',
     }
 
     @property
