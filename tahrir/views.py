@@ -62,6 +62,7 @@ def _get_user(request, id_or_nickname):
         except ValueError:
             return None
 
+
 @view_config(route_name='admin', renderer='admin.mak', permission='admin')
 def admin(request):
 
@@ -72,7 +73,7 @@ def admin(request):
 
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                 authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = None
 
@@ -84,11 +85,11 @@ def admin(request):
             # Add a Badge to the DB.
             request.db.add_person(request.POST.get('person-email'),
                                   nickname=request.POST.get(
-                                            'person-nickname'),
+                                      'person-nickname'),
                                   website=request.POST.get(
-                                            'person-website'),
+                                      'person-website'),
                                   bio=request.POST.get(
-                                            'person-bio'))
+                                      'person-bio'))
         elif request.POST.get('add-badge'):
             # Add a Badge to the DB.
             request.db.add_badge(request.POST.get('badge-name'),
@@ -101,43 +102,43 @@ def admin(request):
             # Add an Invitation to the DB.
             try:
                 created_on = datetime.strptime(
-                                request.POST.get('invitation-created'),
-                                '%Y-%m-%d %H:%M')
+                    request.POST.get('invitation-created'),
+                    '%Y-%m-%d %H:%M')
             except ValueError:
-                created_on = None # Will default to datetime.now()
+                created_on = None  # Will default to datetime.now()
 
             try:
                 expires_on = datetime.strptime(
-                                request.POST.get('invitation-expires'),
-                                '%Y-%m-%d %H:%M')
+                    request.POST.get('invitation-expires'),
+                    '%Y-%m-%d %H:%M')
             except ValueError:
-                expires_on = None # Will default to datettime.now()
+                expires_on = None  # Will default to datettime.now()
 
             request.db.add_invitation(
-                    request.POST.get('invitation-badge-id'),
-                    created_on=created_on,
-                    expires_on=expires_on,
-                    created_by=request.POST.get('invitation-issuer-id'))
+                request.POST.get('invitation-badge-id'),
+                created_on=created_on,
+                expires_on=expires_on,
+                created_by=request.POST.get('invitation-issuer-id'))
         elif request.POST.get('add-issuer'):
             # Add an Issuer to the DB.
             request.db.add_issuer(
-                    request.POST.get('issuer-origin'),
-                    request.POST.get('issuer-name'),
-                    request.POST.get('issuer-org'),
-                    request.POST.get('issuer-contact'))
+                request.POST.get('issuer-origin'),
+                request.POST.get('issuer-name'),
+                request.POST.get('issuer-org'),
+                request.POST.get('issuer-contact'))
         elif request.POST.get('add-assertion'):
             # Add an Assertion to the DB.
             try:
                 issued_on = datetime.strptime(
-                                request.POST.get('assertion-issued-on'),
-                                '%Y-%m-%d %H:%M')
+                    request.POST.get('assertion-issued-on'),
+                    '%Y-%m-%d %H:%M')
             except ValueError:
-                issued_on = None # Will default to datetime.now()
+                issued_on = None  # Will default to datetime.now()
 
             request.db.add_assertion(
-                    request.POST.get('assertion-badge-id'),
-                    request.POST.get('assertion-person-email'),
-                    issued_on)
+                request.POST.get('assertion-badge-id'),
+                request.POST.get('assertion-person-email'),
+                issued_on)
 
     return dict(
         auth_principals=effective_principals(request),
@@ -148,11 +149,11 @@ def admin(request):
 @view_config(route_name='home', renderer='index.mak')
 def index(request):
 
-    n = 5 # n is the number of items displayed in each column.
+    n = 5  # n is the number of items displayed in each column.
 
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                 authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = None
 
@@ -220,7 +221,7 @@ def invitation_claim(request):
 
     if not authenticated_userid(request):
         request.session['came_from'] = request.resource_url(
-                request.context, 'claim')
+            request.context, 'claim')
         return HTTPFound(location=request.route_url('login'))
 
     person = request.db.get_person(person_email=authenticated_userid(request))
@@ -299,15 +300,16 @@ def leaderboard(request):
         percentile = None
 
     return dict(
-            auth_principals=effective_principals(request),
-            awarded_assertions=awarded_assertions,
-            top_persons_sorted=leaderboard,
-            rank=rank,
-            user_count=user_count,
-            percentile=percentile,
-            competitors=competitors,
-            user_to_rank=user_to_rank,
-            )
+        auth_principals=effective_principals(request),
+        awarded_assertions=awarded_assertions,
+        top_persons_sorted=leaderboard,
+        rank=rank,
+        user_count=user_count,
+        percentile=percentile,
+        competitors=competitors,
+        user_to_rank=user_to_rank,
+    )
+
 
 @view_config(route_name='leaderboard_json', renderer='json')
 @view_config(route_name='rank_json', renderer='json')
@@ -349,7 +351,7 @@ def leaderboard_json(request):
         dict(user_to_rank[p].items() + {'nickname': p.nickname}.items())
         for p in leaderboard]
 
-    return { 'leaderboard': ret }
+    return {'leaderboard': ret}
 
 
 @view_config(route_name='about', renderer='about.mak')
@@ -365,74 +367,71 @@ def explore(request):
     # Check if a search has been done, and if so, show
     # search results.
     search_query = None
-    search_results = dict() # name: link
+    search_results = dict()  # name: link
     if request.POST:
         if request.POST.get('badge-search'):
             # badge-query is a required field on the template form.
             search_query = request.POST.get('badge-query')
             matching_results = request.db.get_all_badges().filter(
-                    sa.func.lower(m.Badge.name).like('%' + search_query
-                                    + '%') |
-                    sa.func.lower(m.Badge.description).like('%' +
-                                    search_query +
-                                    '%') |
-                    sa.func.lower(m.Badge.tags).like('%' +
-                                    search_query
-                                    + '%')).all()
+                sa.func.lower(m.Badge.name).like(
+                    '%' + search_query + '%') |
+                sa.func.lower(m.Badge.description).like(
+                    '%' + search_query + '%') |
+                sa.func.lower(m.Badge.tags).like(
+                    '%' + search_query + '%')).all()
             for r in matching_results:
                 search_results[r.name] = request.route_url('badge', id=r.id)
         elif request.POST.get('person-search'):
             # person-query is a required field on the template form.
             search_query = request.POST.get('person-query')
             matching_results = request.db.get_all_persons().filter(
-                    ((m.Person.nickname.like('%' + search_query
-                            + '%')) |
-                    (m.Person.bio.like('%' + search_query
-                            + '%'))) &
-                    (m.Person.opt_out == False)).all()
+                ((m.Person.nickname.like(
+                    '%' + search_query + '%')) |
+                    (m.Person.bio.like(
+                        '%' + search_query + '%'))) &
+                (m.Person.opt_out == False)).all()
             for r in matching_results:
                 search_results[r.nickname] = request.route_url(
-                        'user', id=r.nickname)
+                    'user', id=r.nickname)
         elif request.POST.get('tag-search'):
             # tag-query is a required field on the template form.
             search_query = request.POST.get('tag-query')
             if request.POST.get('tag-match-all'):
                 return HTTPFound(location=request.route_url(
-                                 'tags', tags=search_query, match='all'))
+                    'tags', tags=search_query, match='all'))
             else:
                 return HTTPFound(location=request.route_url(
-                                 'tags', tags=search_query, match='any'))
-
+                    'tags', tags=search_query, match='any'))
 
     # Get awarded assertions.
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = None
 
     # Get some random badges (for discovery).
     try:
         random_badges = random.sample(request.db.get_all_badges().all(), 5)
-    except ValueError: # the sample is probably larger than the population
+    except ValueError:  # the sample is probably larger than the population
         random_badges = request.db.get_all_badges().all()
 
     # Get some random persons (for discovery).
     try:
         random_persons = random.sample(request.db.get_all_persons().filter(
-                m.Person.opt_out == False).all(), 5)
-    except ValueError: # the sample is probably larger than the population
+            m.Person.opt_out == False).all(), 5)
+    except ValueError:  # the sample is probably larger than the population
         random_persons = request.db.get_all_persons().filter(
-                m.Person.opt_out == False).all()
+            m.Person.opt_out == False).all()
 
     return dict(
-            auth_principals=effective_principals(request),
-            awarded_assertions=awarded_assertions,
-            random_badges=random_badges,
-            random_persons=random_persons,
-            search_results=search_results,
-            search_query=search_query,
-            )
+        auth_principals=effective_principals(request),
+        awarded_assertions=awarded_assertions,
+        random_badges=random_badges,
+        random_persons=random_persons,
+        search_results=search_results,
+        search_query=search_query,
+    )
 
 
 @view_config(route_name='explore_badges', renderer='explore_badges.mak')
@@ -447,16 +446,16 @@ def explore_badges(request):
     # Get awarded assertions.
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = None
 
     return dict(
-            all_badges=all_badges,
-            newest_badges=newest_badges,
-            auth_principals=effective_principals(request),
-            awarded_assertions=awarded_assertions,
-            )
+        all_badges=all_badges,
+        newest_badges=newest_badges,
+        auth_principals=effective_principals(request),
+        awarded_assertions=awarded_assertions,
+    )
 
 
 @view_config(route_name='explore_badges_rss')
@@ -510,7 +509,7 @@ def badge(request):
     # Get awarded assertions.
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = []
 
@@ -519,26 +518,28 @@ def badge(request):
     try:
         times_awarded = len(request.db.get_assertions_by_badge(badge_id))
         last_awarded = request.db.get_all_assertions().filter(
-                sa.func.lower(m.Assertion.badge_id) == \
-                        sa.func.lower(badge_id)).order_by(
-                                sa.desc(m.Assertion.issued_on)).limit(1).one()
+            sa.func.lower(m.Assertion.badge_id) == sa.func.lower(badge_id)
+        ).order_by(
+            sa.desc(m.Assertion.issued_on)
+        ).limit(1).one()
         last_awarded_person = request.db.get_person(
-                id=last_awarded.person_id)
+            id=last_awarded.person_id)
 
         first_awarded = request.db.get_all_assertions().filter(
-                sa.func.lower(m.Assertion.badge_id) == \
-                        sa.func.lower(badge_id)).order_by(
-                                sa.asc(m.Assertion.issued_on)).limit(1).one()
+            sa.func.lower(m.Assertion.badge_id) == sa.func.lower(badge_id)
+        ).order_by(
+            sa.asc(m.Assertion.issued_on)
+        ).limit(1).one()
         first_awarded_person = request.db.get_person(
-                id=first_awarded.person_id)
+            id=first_awarded.person_id)
 
         percent_earned = float(times_awarded) / \
-                         float(len(request.db.get_all_persons().all()))
+            float(len(request.db.get_all_persons().all()))
 
         # This is a list of assertions for this badge.
         badge_assertions = request.db.get_all_assertions().filter(
-                m.Assertion.badge_id == badge.id).all()
-    except sa.orm.exc.NoResultFound: # This badge has never been awarded.
+            m.Assertion.badge_id == badge.id).all()
+    except sa.orm.exc.NoResultFound:  # This badge has never been awarded.
         times_awarded = 0
         last_awarded = None
         last_awarded_person = None
@@ -554,18 +555,19 @@ def badge(request):
     badge_description_html = docutils.examples.html_body(badge.description)
 
     return dict(
-            badge=badge,
-            badge_description_html=badge_description_html,
-            auth_principals=effective_principals(request),
-            awarded_assertions=awarded_assertions,
-            times_awarded=times_awarded,
-            last_awarded=last_awarded,
-            last_awarded_person=last_awarded_person,
-            first_awarded=first_awarded,
-            first_awarded_person=first_awarded_person,
-            badge_assertions=badge_assertions,
-            percent_earned=percent_earned,
-            )
+        badge=badge,
+        badge_description_html=badge_description_html,
+        auth_principals=effective_principals(request),
+        awarded_assertions=awarded_assertions,
+        times_awarded=times_awarded,
+        last_awarded=last_awarded,
+        last_awarded_person=last_awarded_person,
+        first_awarded=first_awarded,
+        first_awarded_person=first_awarded_person,
+        badge_assertions=badge_assertions,
+        percent_earned=percent_earned,
+    )
+
 
 def _badge_json_generator(request, badge):
     try:
@@ -581,9 +583,9 @@ def _badge_json_generator(request, badge):
         first_awarded_person = first_awarded.person
 
         percent_earned = float(times_awarded) / \
-                         float(request.db.get_all_persons().count())
+            float(request.db.get_all_persons().count())
 
-    except sa.orm.exc.NoResultFound: # This badge has never been awarded.
+    except sa.orm.exc.NoResultFound:  # This badge has never been awarded.
         times_awarded = 0
         last_awarded = None
         last_awarded_person = None
@@ -618,6 +620,7 @@ def _badge_json_generator(request, badge):
         'percent_earned': percent_earned,
         'image': badge.image
     }
+
 
 @view_config(route_name='badge_json', renderer='json')
 def badge_json(request):
@@ -687,7 +690,7 @@ def user_rss(request):
     if not user:
         raise HTTPNotFound("No such user %r" % user_id)
 
-    if user.opt_out == True and user.email != authenticated_userid(request):
+    if user.opt_out is True and user.email != authenticated_userid(request):
         raise HTTPNotFound("User %r has opted out." % user_id)
 
     comparator = lambda x, y: cmp(x.issued_on, y.issued_on)
@@ -733,7 +736,7 @@ def user(request):
     # Get awarded assertions.
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = None
 
@@ -743,7 +746,7 @@ def user(request):
     if not user:
         raise HTTPNotFound("No such user %r" % user_id)
 
-    if user.opt_out == True and user.email != authenticated_userid(request):
+    if user.opt_out is True and user.email != authenticated_userid(request):
         raise HTTPNotFound("User %r has opted out." % user_id)
 
     if request.POST:
@@ -753,7 +756,7 @@ def user(request):
             raise HTTPForbidden("Unauthorized")
 
         person = request.db.get_all_persons().filter_by(
-                    email=authenticated_userid(request)).one()
+            email=authenticated_userid(request)).one()
 
         if request.POST.get('change-nickname') and allow_changenick:
             new_nick = request.POST.get('new-nickname')
@@ -777,19 +780,20 @@ def user(request):
 
     # Get percentage of badges earned.
     try:
-        percent_earned = (float(len(user_badges)) / \
+        percent_earned = (float(len(user_badges)) /
                           float(count_total_badges)) * 100
     except ZeroDivisionError:
         percent_earned = 0
 
     # Get invitations the user has created.
-    invitations = [i for i in request.db.get_invitations(user.id)\
+    invitations = [i for i in request.db.get_invitations(user.id)
                    if i.expires_on > datetime.now()]
 
     # Get rank. (same code found in leaderboard view function)
     rank = user.rank
-    user_count = request.db.session.query(m.Person)\
-        .filter(m.Person.opt_out == False).count()
+    user_count = request.db.session.query(
+        m.Person
+    ).filter(m.Person.opt_out == False).count()
 
     try:
         percentile = (float(rank) / float(user_count)) * 100
@@ -797,17 +801,17 @@ def user(request):
         percentile = 0
 
     return dict(
-            user=user,
-            user_badges=user_badges,
-            invitations=invitations,
-            percent_earned=percent_earned,
-            auth_principals=effective_principals(request),
-            awarded_assertions=awarded_assertions,
-            allow_changenick=allow_changenick,
-            rank=rank,
-            percentile=percentile,
-            user_count=user_count,
-            )
+        user=user,
+        user_badges=user_badges,
+        invitations=invitations,
+        percent_earned=percent_earned,
+        auth_principals=effective_principals(request),
+        awarded_assertions=awarded_assertions,
+        allow_changenick=allow_changenick,
+        rank=rank,
+        percentile=percentile,
+        user_count=user_count,
+    )
 
 
 def _user_json_generator(request, user):
@@ -822,17 +826,17 @@ def _user_json_generator(request, user):
 
     # Get percentage of badges earned.
     try:
-        percent_earned = (float(len(user_badges)) / \
+        percent_earned = (float(len(user_badges)) /
                           float(count_total_badges)) * 100
     except ZeroDivisionError:
         percent_earned = 0
-
 
     assertions = []
     for assertion in user.assertions:
         assertions.append(
             dict(
-                {'issued': float(assertion.issued_on.strftime('%s'))}.items() + \
+                {'issued':
+                    float(assertion.issued_on.strftime('%s'))}.items() +
                 _badge_json_generator(request, assertion.badge).items()))
 
     return {
@@ -856,7 +860,7 @@ def user_json(request):
         request.response.status = '404 Not Found'
         return {"error": "No such user exists."}
 
-    if user.opt_out == True and user.email != authenticated_userid(request):
+    if user.opt_out is True and user.email != authenticated_userid(request):
         request.response.status = '404 Not Found'
         return {"error": "User has opted out."}
 
@@ -867,7 +871,7 @@ def user_json(request):
 def builder(request):
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                 authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = None
 
@@ -899,7 +903,7 @@ def tags(request):
     # Get awarded assertions.
     if authenticated_userid(request):
         awarded_assertions = request.db.get_assertions_by_email(
-                                authenticated_userid(request))
+            authenticated_userid(request))
     else:
         awarded_assertions = None
 
@@ -911,11 +915,11 @@ def tags(request):
         badges = request.db.get_badges_from_tags(tags, match_all=False)
 
     return dict(
-            tags=tags,
-            badges=badges,
-            auth_principals=effective_principals(request),
-            awarded_assertions=awarded_assertions,
-            )
+        tags=tags,
+        badges=badges,
+        auth_principals=effective_principals(request),
+        awarded_assertions=awarded_assertions,
+    )
 
 
 @view_config(context=unicode)
@@ -987,7 +991,6 @@ def login_denied_view(request):
     return HTTPFound(location=request.route_url('login'))
 
 
-
 @view_config(route_name='logout')
 def logout(request):
     headers = forget(request)
@@ -1023,27 +1026,28 @@ def make_websocket_handler(settings):
     class WebsocketHandler(LiveWidget):
         topic = settings.get("tahrir.websocket.topic")
         onmessage = """
-        (function(json){
-            // TODO -- put the DOM manipulation stuff here.
-            var user = json.msg.user.badges_user_id;
-            var badge = json.msg.badge.badge_id;
-            $.ajax({
-                url: "%s/_w/assertion/" + user + "/" + badge,
-                dataType: "html",
-                success: function (html) {
-                    $("#latest-awards").prepend(html);
-                    $("#latest-awards > div:first-child").hide();
-                    $("#latest-awards > div:first-child").slideDown("slow");
-                    $("#latest-awards > div:last-child").slideUp('slow', complete=function() {
-                        $("#latest-awards > div:last-child").remove();
-                    });
-                }
+(function(json){
+    // TODO -- put the DOM manipulation stuff here.
+    var user = json.msg.user.badges_user_id;
+    var badge = json.msg.badge.badge_id;
+    $.ajax({
+        url: "%s/_w/assertion/" + user + "/" + badge,
+        dataType: "html",
+        success: function (html) {
+            $("#latest-awards").prepend(html);
+            $("#latest-awards > div:first-child").hide();
+            $("#latest-awards > div:first-child").slideDown("slow");
+            $("#latest-awards > div:last-child").slideUp('slow', complete=function() {
+                $("#latest-awards > div:last-child").remove();
             });
-        })(json);
+        }
+    });
+})(json);
         """ % settings['tahrir.base_url']
         backend = "websocket"
 
-        # Don't actually produce anything when you call .display() on this widget.
+        # Don't actually produce anything when you call .display() on this
+        # widget.
         inline_engine_name = "mako"
         template = ""
 
@@ -1108,6 +1112,8 @@ def _load_docs(directory, endpoint):
 
 
 htmldocs = {}
+
+
 def load_docs(request, key):
     possible_keys = ['about', 'footer']
 
