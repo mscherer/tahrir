@@ -40,14 +40,14 @@ def main(global_config, **settings):
 
     identifier = settings.get('tahrir.openid_identifier')
     tahrir_api.model.Person.openid_identifier =\
-            make_openid_identifier_property(identifier)
+        make_openid_identifier_property(identifier)
 
     tahrir_api.model.Person.created_on_rel =\
-            make_relative_time_property('created_on')
+        make_relative_time_property('created_on')
     tahrir_api.model.Assertion.created_on_rel =\
-            make_relative_time_property('created_on')
+        make_relative_time_property('created_on')
     tahrir_api.model.Assertion.issued_on_rel =\
-            make_relative_time_property('issued_on')
+        make_relative_time_property('issued_on')
 
     session_cls = scoped_session(sessionmaker(
         extension=ZopeTransactionExtension(),
@@ -93,26 +93,25 @@ def main(global_config, **settings):
         # TODO: There is a better way to log this message than print.
         print 'Failed to load secret.ini.  Reason: %r' % str(e)
 
-
     authn_policy = AuthTktAuthenticationPolicy(
         secret=settings['authnsecret'],
-        callback=groupfinder, # groupfinder callback checks for admin privs
-        hashalg='sha512', # because md5 is deprecated
+        callback=groupfinder,  # groupfinder callback checks for admin privs
+        hashalg='sha512',  # because md5 is deprecated
         secure=asbool(settings['tahrir.secure_cookies']),
     )
     authz_policy = ACLAuthorizationPolicy()
     session_factory = UnencryptedCookieSessionFactoryConfig(
-            settings['session.secret'])
+        settings['session.secret'])
 
     # Configure our cache that we instantiated earlier.
     cache.configure_from_config(settings, 'dogpile.cache.')
 
     config = Configurator(
-            settings=settings,
-            root_factory=get_root,
-            session_factory=session_factory,
-            authentication_policy=authn_policy,
-            authorization_policy=authz_policy)
+        settings=settings,
+        root_factory=get_root,
+        session_factory=session_factory,
+        authentication_policy=authn_policy,
+        authorization_policy=authz_policy)
 
     config.include('velruse.providers.openid')
     config.add_openid_login(realm=settings.get('tahrir.openid_realm'))
