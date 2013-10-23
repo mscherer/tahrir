@@ -458,6 +458,44 @@ def explore_badges(request):
             awarded_assertions=awarded_assertions,
             )
 
+
+@view_config(route_name='explore_badges_rss')
+def explore_badges_rss(request):
+    """ Render rss feed for the latest badges. """
+
+    newest_badges = sorted(request.db.get_all_badges().all(),
+                           key=lambda badge: badge.created_on,
+                           reverse=True)[:20]
+
+    feed = feedgenerator.Rss201rev2Feed(
+        title=u"Newest badges Feed",
+        link=request.route_url('explore_badges_rss'),
+        description=u"Latest badges of the application",
+        language=u"en",
+    )
+
+    description_template = "<img src='%s' alt='%s' />%s"
+
+    for badge in newest_badges:
+        url = request.route_url('badge', id=badge.id)
+        feed.add_item(
+            title=badge.name,
+            link=url,
+            pubdate=badge.created_on,
+            description=description_template % (
+                badge.image,
+                badge.name,
+                badge.description,
+            )
+        )
+
+    return Response(
+        body=feed.writeString('utf-8'),
+        content_type='application/rss+xml',
+        charset='utf-8',
+    )
+
+
 @view_config(route_name='badge', renderer='badge.mak')
 def badge(request):
     """Render badge info page."""
@@ -771,6 +809,7 @@ def user(request):
             user_count=user_count,
             )
 
+
 def _user_json_generator(request, user):
     # Get user badges.
     user_badges = [a.badge for a in user.assertions]
@@ -803,6 +842,7 @@ def _user_json_generator(request, user):
         'assertions': assertions
     }
 
+
 @view_config(route_name='user_json', renderer='json')
 def user_json(request):
     """Render user info JSON dump."""
@@ -821,6 +861,7 @@ def user_json(request):
         return {"error": "User has opted out."}
 
     return _user_json_generator(request, user)
+
 
 @view_config(route_name='builder', renderer='builder.mak')
 def builder(request):
