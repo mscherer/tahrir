@@ -10,7 +10,9 @@ import StringIO
 import qrcode as qrcode_module
 import docutils.examples
 import markupsafe
+from datetime import date
 from datetime import datetime
+from datetime import timedelta
 
 from mako.template import Template as t
 from webhelpers import feedgenerator
@@ -39,11 +41,13 @@ import tahrir_api.model as m
 
 from tahrir.utils import strip_tags, generate_badge_yaml
 import widgets
+import foafutils
 
 from moksha.wsgi.widgets.api import get_moksha_socket, LiveWidget
 
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import func
+
 
 
 def _get_user(request, id_or_nickname):
@@ -61,6 +65,7 @@ def _get_user(request, id_or_nickname):
             return request.db.get_person(id=int(id_or_nickname))
         except ValueError:
             return None
+
 
 @view_config(route_name='admin', renderer='admin.mak', permission='admin')
 def admin(request):
@@ -266,16 +271,22 @@ def leaderboard(request):
         user = request.db.get_person(
             person_email=authenticated_userid(request))
 
-    leaderboard = request.db.session\
-        .query(m.Person)\
-        .order_by(m.Person.rank)\
-        .filter(m.Person.opt_out == False)\
-        .all()
+    query = request.db.session.query(
+        m.Person
+    ).order_by(
+        m.Person.rank,
+        m.Person.created_on,
+    ).filter(
+        m.Person.opt_out == False
+    )
+
+    leaderboard = query.filter(m.Person.rank != None).all()
+    # Get total user count.
+    user_count = len(leaderboard)
+    leaderboard.extend(query.filter(m.Person.rank == None).all())
 
     user_to_rank = request.db._make_leaderboard()
 
-    # Get total user count.
-    user_count = len(leaderboard)
 
     if user:
         awarded_assertions = user.assertions
@@ -308,6 +319,7 @@ def leaderboard(request):
             competitors=competitors,
             user_to_rank=user_to_rank,
             )
+
 
 @view_config(route_name='leaderboard_json', renderer='json')
 @view_config(route_name='rank_json', renderer='json')
@@ -349,7 +361,7 @@ def leaderboard_json(request):
         dict(user_to_rank[p].items() + {'nickname': p.nickname}.items())
         for p in leaderboard]
 
-    return { 'leaderboard': ret }
+    return {'leaderboard': ret}
 
 
 @view_config(route_name='about', renderer='about.mak')
@@ -357,6 +369,7 @@ def about(request):
     return dict(
         content=load_docs(request, 'about'),
         auth_principals=effective_principals(request))
+
 
 
 @view_config(route_name='explore', renderer='explore.mak')
@@ -458,6 +471,7 @@ def explore_badges(request):
             awarded_assertions=awarded_assertions,
             )
 
+
 @view_config(route_name='badge', renderer='badge.mak')
 def badge(request):
     """Render badge info page."""
@@ -529,6 +543,7 @@ def badge(request):
             percent_earned=percent_earned,
             )
 
+
 def _badge_json_generator(request, badge):
     try:
         assertions = sorted(badge.assertions,
@@ -578,8 +593,9 @@ def _badge_json_generator(request, badge):
         'first_awarded': first_awarded,
         'first_awarded_person': first_awarded_person,
         'percent_earned': percent_earned,
-        'image': badge.image
+        'image': badge.image,
     }
+
 
 @view_config(route_name='badge_json', renderer='json')
 def badge_json(request):
@@ -684,13 +700,33 @@ def user_rss(request):
     )
 
 
+@view_config(route_name='user_foaf')
+def user_foaf(request):
+    """ Render per-user foaf. """
+    user_id = request.matchdict.get('id')
+    user = _get_user(request, user_id)
+
+    if not user:
+        raise HTTPNotFound("No such user %r" % user_id)
+
+    if user.opt_out == True and user.email != authenticated_userid(request):
+        raise HTTPNotFound("User %r has opted out." % user_id)
+
+    body = foafutils.generate_foaf_file(user)
+
+    return Response(
+        body=body,
+        content_type='application/rdf',
+        charset='utf-8',
+    )
+
+
 @view_config(route_name='user', renderer='user.mak')
 def user(request):
     """Render user info page."""
 
     # Grab a boolean out of the config
     settings = request.registry.settings
-    allow_changenick = asbool(settings.get('tahrir.allow_changenick', True))
 
     # Get awarded assertions.
     if authenticated_userid(request):
@@ -717,13 +753,7 @@ def user(request):
         person = request.db.get_all_persons().filter_by(
                     email=authenticated_userid(request)).one()
 
-        if request.POST.get('change-nickname') and allow_changenick:
-            new_nick = request.POST.get('new-nickname')
-            person.nickname = new_nick
-
-            # The user's nickname has changed, so let's go to the new URL.
-            return HTTPFound(location=request.route_url('user', id=new_nick))
-        elif request.POST.get('deactivate-account'):
+        if request.POST.get('deactivate-account'):
             person.opt_out = True
         elif request.POST.get('reactivate-account'):
             person.opt_out = False
@@ -765,11 +795,61 @@ def user(request):
             percent_earned=percent_earned,
             auth_principals=effective_principals(request),
             awarded_assertions=awarded_assertions,
-            allow_changenick=allow_changenick,
             rank=rank,
             percentile=percentile,
             user_count=user_count,
             )
+
+
+@view_config(route_name='user_edit', renderer='user_edit.mak')
+def user_edit(request):
+    """Render user edit page."""
+
+    # Grab a boolean out of the config
+    settings = request.registry.settings
+    allow_changenick = asbool(settings.get('tahrir.allow_changenick', True))
+
+    # Get awarded assertions.
+    if authenticated_userid(request):
+        awarded_assertions = request.db.get_assertions_by_email(
+                                authenticated_userid(request))
+    else:
+        awarded_assertions = None
+
+    user = _get_user(request, request.matchdict.get('id'))
+
+    if request.POST:
+
+        # Authz check
+        if authenticated_userid(request) != user.email:
+            raise HTTPForbidden("Unauthorized")
+
+        person = request.db.get_all_persons().filter_by(
+                    email=authenticated_userid(request)).one()
+
+        # if this remains None, we don't have to go to a new URL
+        new_nick = None
+        if request.POST.get('edit-profile'):
+            if request.POST.get('new-nickname') and allow_changenick:
+                new_nick = request.POST.get('new-nickname')
+                person.nickname = new_nick
+
+            if request.POST.get('new-website'):
+                person.website = request.POST.get('new-website')
+
+            if request.POST.get('new-bio'):
+                person.bio = request.POST.get('new-bio')
+
+        user_id = new_nick or person.nickname or person.id
+        return HTTPFound(location=request.route_url('user', id=user_id))
+
+    return dict(
+            user=user,
+            auth_principals=effective_principals(request),
+            awarded_assertions=awarded_assertions,
+            allow_changenick=allow_changenick,
+            )
+
 
 def _user_json_generator(request, user):
     # Get user badges.
@@ -791,17 +871,115 @@ def _user_json_generator(request, user):
 
     assertions = []
     for assertion in user.assertions:
-        assertions.append(
-            dict(
-                {'issued': float(assertion.issued_on.strftime('%s'))}.items() + \
-                _badge_json_generator(request, assertion.badge).items()))
+        issued = {'issued': float(assertion.issued_on.strftime('%s'))}.items()
+        _badged = _badge_json_generator(request, assertion.badge).items()
+        assertions.append(dict(issued + _badged))
 
     return {
         'user': user.nickname,
         'avatar': user.avatar_url(int(request.GET.get('size', 100))),
         'percent_earned': percent_earned,
-        'assertions': assertions
+        'assertions': assertions,
     }
+
+
+@view_config(route_name='diff', renderer='diff.mak')
+def diff(request):
+    """Render user diff page."""
+
+    # Get awarded assertions.
+    if authenticated_userid(request):
+        awarded_assertions = request.db.get_assertions_by_email(
+                                authenticated_userid(request))
+    else:
+        awarded_assertions = None
+
+    user_a_id = request.matchdict.get('id_a')
+    user_b_id = request.matchdict.get('id_b')
+    user_a = _get_user(request, user_a_id)
+    user_b = _get_user(request, user_b_id)
+
+    if not user_a:
+        raise HTTPNotFound("No such user %r" % user_a_id)
+    if not user_b:
+        raise HTTPNotFound("No such user %r" % user_b_id)
+
+    if user_a.opt_out == True and user_a.email != authenticated_userid(request):
+        raise HTTPNotFound("User %r has opted out." % user_a_id)
+    if user_b.opt_out == True and user_b.email != authenticated_userid(request):
+        raise HTTPNotFound("User %r has opted out." % user_b_id)
+
+    # Get user badges.
+    user_a_badges = [a.badge for a in user_a.assertions]
+    user_b_badges = [a.badge for a in user_b.assertions]
+
+    # Sort user badges by id.
+    user_a_badges = sorted(user_a_badges, key=lambda badge: badge.id)
+    user_b_badges = sorted(user_b_badges, key=lambda badge: badge.id)
+
+    # Get total number of unique badges in the system.
+    count_total_badges = len(request.db.get_all_badges().all())
+
+    # Get percentage of badges earned.
+    try:
+        user_a_percent_earned = (float(len(user_a_badges)) / \
+                          float(count_total_badges)) * 100
+    except ZeroDivisionError:
+        user_a_percent_earned = 0
+    try:
+        user_b_percent_earned = (float(len(user_b_badges)) / \
+                          float(count_total_badges)) * 100
+    except ZeroDivisionError:
+        user_b_percent_earned = 0
+
+    # Get rank. (same code found in leaderboard view function)
+    user_a_rank = user_a.rank
+    user_b_rank = user_b.rank
+    user_count = request.db.session.query(m.Person)\
+        .filter(m.Person.opt_out == False).count()
+
+    try:
+        user_a_percentile = (float(user_a_rank) / float(user_count)) * 100
+    except ZeroDivisionError:
+        user_a_percentile = 0
+    try:
+        user_b_percentile = (float(user_b_rank) / float(user_count)) * 100
+    except ZeroDivisionError:
+        user_b_percentile = 0
+
+    # Diff badges.
+    user_a_unique_badges = []
+    user_b_unique_badges = []
+    combined_badges = list(sorted(set(user_a_badges + user_b_badges),
+                                  key=lambda badge: badge.id))
+    shared_badges = []
+    for badge in combined_badges:
+        if badge in user_a_badges and badge not in user_b_badges:
+            user_a_unique_badges.append(badge)
+        elif badge in user_b_badges and badge not in user_a_badges:
+            user_b_unique_badges.append(badge)
+        elif badge in user_a_badges and badge in user_b_badges:
+            shared_badges.append(badge)
+
+    return dict(
+        auth_principals=effective_principals(request),
+        awarded_assertions=awarded_assertions,
+        user_count=user_count,
+        user_a=user_a,
+        user_b=user_b,
+        user_a_badges=user_a_badges,
+        user_b_badges=user_b_badges,
+        user_a_unique_badges=user_a_unique_badges,
+        user_b_unique_badges=user_b_unique_badges,
+        shared_badges=shared_badges,
+        user_a_percent_earned=user_a_percent_earned,
+        user_b_percent_earned=user_b_percent_earned,
+        user_a_rank=user_a_rank,
+        user_b_rank=user_b_rank,
+        user_a_percentile=user_a_percentile,
+        user_b_percentile=user_b_percentile,
+    )
+
 
 @view_config(route_name='user_json', renderer='json')
 def user_json(request):
@@ -821,6 +999,7 @@ def user_json(request):
         return {"error": "User has opted out."}
 
     return _user_json_generator(request, user)
+
 
 @view_config(route_name='builder', renderer='builder.mak')
 def builder(request):
@@ -875,6 +1054,140 @@ def tags(request):
             auth_principals=effective_principals(request),
             awarded_assertions=awarded_assertions,
             )
+
+
+@view_config(route_name='report', renderer='report.mak')
+def report(request):
+    """Render report page."""
+
+    frame = 'this week'
+
+    start = get_start_week()
+    stop = start + timedelta(days=6)
+
+    user_to_rank = request.db._make_leaderboard(
+        start=start,
+        stop=stop,
+    )
+
+    return dict(
+        auth_principals=effective_principals(request),
+        user_to_rank=user_to_rank,
+        start_date=start,
+        stop_date=stop,
+        frame=frame,
+    )
+
+
+@view_config(route_name='report_year', renderer='report.mak')
+def report_year(request):
+    """ The leaderboard for a specific year. """
+
+    frame = 'year'
+
+    ## TODO: how to make sure this doesn't break?
+    year = int(request.matchdict.get('year'))
+
+    start = date(year, 1, 1)
+    stop = date(year, 12, 31)
+
+    user_to_rank = request.db._make_leaderboard(
+        start=start,
+        stop=stop,
+    )
+
+    return dict(
+        auth_principals=effective_principals(request),
+        user_to_rank=user_to_rank,
+        start_date=start,
+        stop_date=stop,
+        frame=frame,
+    )
+
+
+@view_config(route_name='report_year_month', renderer='report.mak')
+def report_year_month(request):
+    """ The leaderboard for a specific month of a specific year. """
+
+    frame = 'month'
+
+    ## TODO: how to make sure this doesn't break?
+    year = int(request.matchdict.get('year'))
+    month = int(request.matchdict.get('month'))
+
+    start = date(year, month, 1)
+    stop = date(year, month + 1, 1) - timedelta(days=1)
+
+    user_to_rank = request.db._make_leaderboard(
+        start=start,
+        stop=stop,
+    )
+
+    return dict(
+        auth_principals=effective_principals(request),
+        user_to_rank=user_to_rank,
+        start_date=start,
+        stop_date=stop,
+        frame=frame,
+    )
+
+
+@view_config(route_name='report_year_month_day', renderer='report.mak')
+def report_year_month_day(request):
+    """ The leaderboard for a specific month of a specific year. """
+
+    frame = 'day'
+
+    ## TODO: how to make sure this doesn't break?
+    year = int(request.matchdict.get('year'))
+    month = int(request.matchdict.get('month'))
+    day = int(request.matchdict.get('day'))
+
+    start = date(year, month, day)
+    stop = date(year, month, day) + timedelta(days=1)
+
+    user_to_rank = request.db._make_leaderboard(
+        start=start,
+        stop=stop,
+    )
+
+    return dict(
+        auth_principals=effective_principals(request),
+        user_to_rank=user_to_rank,
+        start_date=start,
+        stop_date=stop,
+        frame=frame,
+    )
+
+@view_config(route_name='report_year_week', renderer='report.mak')
+def report_year_week(request):
+    """ The leaderboard for a specific week of a specific year. """
+
+    frame = 'week'
+
+    ## TODO: how to make sure this doesn't break?
+    year = int(request.matchdict.get('year'))
+    week = int(request.matchdict.get('weeknumber'))
+
+    # Get the week using the number of week
+    start = date(year, 1, 1) + timedelta(weeks=week - 1)
+
+    # Get the start of the week (as January 1st might not have been a Monday)
+    start = get_start_week(start.year, start.month, start.day)
+    stop = start + timedelta(days=6)
+
+    user_to_rank = request.db._make_leaderboard(
+        start=start,
+        stop=stop,
+    )
+
+    return dict(
+        auth_principals=effective_principals(request),
+        user_to_rank=user_to_rank,
+        start_date=start,
+        stop_date=stop,
+        frame=frame,
+    )
 
 
 @view_config(context=unicode)
@@ -934,6 +1247,11 @@ def login_complete_view(request):
     if not request.db.get_person(person_email=email):
         request.db.add_person(email=email, nickname=nickname)
 
+    # Note that they have logged in if we are installed with a newer version of
+    # the db API that supports this.
+    if hasattr(request.db, 'note_login'):
+        request.db.note_login(person_email=email)
+
     headers = remember(request, email)
     response = HTTPFound(location=request.session.get('came_from', '/'))
     response.headerlist.extend(headers)
@@ -944,7 +1262,6 @@ def login_complete_view(request):
 def login_denied_view(request):
     # HAAACK -- if login fails, just try again.
     return HTTPFound(location=request.route_url('login'))
-
 
 
 @view_config(route_name='logout')
@@ -1067,6 +1384,8 @@ def _load_docs(directory, endpoint):
 
 
 htmldocs = {}
+
+
 def load_docs(request, key):
     possible_keys = ['about', 'footer']
 
@@ -1082,3 +1401,26 @@ def load_docs(request, key):
         raise KeyError("%r is not permitted." % key)
 
     return htmldocs[key]
+
+
+def get_start_week(year=None, month=None, day=None):
+    """ For a given date, retrieve the day the week started.
+    For any missing parameters (ie: None), use the value of the current
+    day.
+
+    :kwarg year: year to consider when searching a week.
+    :kwarg month: month to consider when searching a week.
+    :kwarg day: day to consider when searching a week.
+    :return a Date of the day the week started either based on the
+        current utc date or based on the information.
+    """
+    now = datetime.utcnow()
+    if not year:
+        year = now.year
+    if not month:
+        month = now.month
+    if not day:
+        day = now.day
+    week_day = date(year, month, day)
+    week_start = week_day - timedelta(days=week_day.weekday())
+    return week_start

@@ -256,8 +256,7 @@ tr:nth-child(even) { background: white; }
 
 /* Applied to every form element on the admin view. */
 form {
-    padding: 4px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 form table {
@@ -384,6 +383,13 @@ img.badge-256 {
 
 .document {
     padding: 20px;
+}
+
+/* This is so that the version number line, external to the sitedocs/footer.rst
+ * file, is not pushed away from the rest of the footer content.
+ */
+footer > .document {
+    padding: 0px;
 }
 
 /* Center the badges fan on the about page */

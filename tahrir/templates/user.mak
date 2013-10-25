@@ -43,7 +43,8 @@
           <p>
             View user as:
             <a href="${request.route_url('user_json', id=user.nickname or user.id)}">JSON</a>,
-            <a href="${request.route_url('user_rss', id=user.nickname or user.id)}">RSS</a>
+            <a href="${request.route_url('user_rss', id=user.nickname or user.id)}">RSS</a>,
+            <a href="${request.route_url('user_foaf', id=user.nickname or user.id)}">RDF</a>
           </p>
         </div>
         % if logged_in == user.email:
@@ -96,6 +97,13 @@
                type="submit"
                value="Change Avatar" />
           </form>
+          <form method="GET" action="${request.route_url('user_edit', id=user.nickname or user.id)}">
+            <input
+               class="pretty-submit"
+               style="height: 50px; width: 100%;"
+               type="submit"
+               value="Edit Profile" />
+          </form>
           % if user.opt_out:
             <form method="POST">
               <input
@@ -115,25 +123,17 @@
                  value="Deactivate Account" />
             </form>
           % endif
+        % elif logged_in:
+            <form method="GET" action="${request.route_url('diff', id_a=logged_in_person.nickname or logged_in_person.id, id_b=user.nickname or user.id)}">
+              <input
+                 class="pretty-submit"
+                 style="height: 50px; width: 100%;"
+                 type="submit"
+                 value="Show Diff" />
+            </form>
         % endif
 
-        <!-- Change nickname button. -->
-        % if logged_in == user.email and allow_changenick:
-          <form method="POST">
-            <input
-               name="new-nickname"
-               placeholder="New nickname"
-               type="text"
-               style="width: 100%;"
-               required="required" />
-            <input
-               class="pretty-submit"
-               style="height: 50px;"
-               name="change-nickname"
-               type="submit"
-               value="Change Nickname" />
-          </form>
-        % endif
+
       </div> <!-- End shadow. -->
     </div> <!-- End padded content. -->
   </div> <!-- End column 1. -->

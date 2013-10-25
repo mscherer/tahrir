@@ -37,6 +37,8 @@ def main(global_config, **settings):
     tahrir_api.model.Person.avatar_url = make_avatar_method(cache)
     tahrir_api.model.Person.email_md5 = property(
         lambda self: hashlib.md5(self.email).hexdigest())
+    tahrir_api.model.Person.email_sha1 = property(
+        lambda self: hashlib.sha1(self.email).hexdigest())
 
     identifier = settings.get('tahrir.openid_identifier')
     tahrir_api.model.Person.openid_identifier =\
@@ -145,8 +147,18 @@ def main(global_config, **settings):
     config.add_route('rank_json', '/leaderboard/{id}/json')
     config.add_route('tags', '/tags/{tags}/{match}')
     config.add_route('user', '/user/{id}')
+    config.add_route('user_edit', '/user/{id}/edit')
     config.add_route('user_json', '/user/{id}/json')
     config.add_route('user_rss', '/user/{id}/rss')
+    config.add_route('user_foaf', '/user/{id}/foaf')
+    config.add_route('diff', '/diff/{id_a}/{id_b}')
+    config.add_route('report', '/report')
+    config.add_route('report_year', '/report/{year}')
+    config.add_route('report_year_month', '/report/{year}/{month}')
+    config.add_route('report_year_week',
+                     '/report/{year}/week/{weeknumber}')
+    config.add_route('report_year_month_day',
+                     '/report/{year}/{month}/{day}')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
 
