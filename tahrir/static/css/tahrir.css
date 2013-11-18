@@ -25,7 +25,6 @@ legend {
     padding-bottom: 10px;
 }
 
-
 /* Header Styles */
 .header {
     color: #3158AF;
@@ -35,6 +34,15 @@ legend {
     text-decoration: none;
 }
 
+#site-logo {
+    width: 142px;
+    height: 75px;
+    background-image: url(../img/fedora_badges_small.png);
+    background-repeat: no-repeat;
+    margin-right: 10px;
+    margin-left: 10px;
+    margin-top: 10px;
+}
 
 /* Applied to numbering, mainly (ex. #1, #2, etc.). */
 .big-text {
@@ -57,43 +65,23 @@ legend {
 .page {
     min-height: calc(100% - 1em);
 }
+
 .page-content {
     overflow: auto;
-    padding-bottom: 3em;
+    padding-bottom: 7em;
 }
 
 /* Footer Styles */
 
 footer {
     position: relative;
-    margin-top: -3em;
-    height: 3em;
+    margin-top: -9em;
+    height: 9em;
     clear: both;
     color: #9B9B9B;
     font-size: 10px;
     text-align: center;
 }
-
-/*
-.footer {
-    color: #9B9B9B; /* Dark gray *
-    font-size: 10px;
-    text-align: center;
-}
-
-.footer, .push {
-    height: -3em;
-    clear: both;
-    display: none;
-}
-
-@media all and (min-width: 768px) {
-    .footer {
-        display: block;
-    }
-}
-*/
-
 
 .date {
     font-size: 0.8em;
@@ -134,10 +122,12 @@ tr:nth-child(odd) { background: #E8EFF8; } /* "Clear day" */
 
 tr:nth-child(even) { background: white; }
 
-.logo-image {
-    margin-right: 10px;
-    margin-left: 10px;
-    margin-top: 10px;
+.admin-form td {
+    min-width: 300px;
+}
+
+.admin-form tr {
+    background: white;
 }
 
 #logo {
@@ -252,16 +242,6 @@ tr:nth-child(even) { background: white; }
     display: block;
     font-size: 0.8em;
     color: #666;
-}
-
-/* Applied to every form element on the admin view. */
-form {
-    margin-bottom: 10px;
-}
-
-form table {
-    width: 95%;
-    max-width: 400px;
 }
 
 .thumbnail-responsive {

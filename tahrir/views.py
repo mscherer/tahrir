@@ -331,19 +331,21 @@ def leaderboard_json(request):
     if user_id:
         user = _get_user(request, user_id)
 
-    leaderboard = request.db.session\
-        .query(m.Person)\
-        .order_by(m.Person.rank)\
-        .filter(m.Person.opt_out == False)\
-        .all()
+    query = request.db.session.query(
+        m.Person
+    ).order_by(
+        m.Person.rank,
+        m.Person.created_on,
+    ).filter(
+        m.Person.opt_out == False
+    )
 
-    user_to_rank = dict([(person, {
-        'badges': len(person.assertions),
-        'rank': person.rank,
-    }) for person in leaderboard])
-
+    leaderboard = query.filter(m.Person.rank != None).all()
     # Get total user count.
     user_count = len(leaderboard)
+    leaderboard.extend(query.filter(m.Person.rank == None).all())
+
+    user_to_rank = request.db._make_leaderboard()
 
     if user:
         rank = user.rank or 0
@@ -358,8 +360,9 @@ def leaderboard_json(request):
         leaderboard = leaderboard[:25]
 
     ret = [
-        dict(user_to_rank[p].items() + {'nickname': p.nickname}.items())
-        for p in leaderboard]
+        dict(user_to_rank[p].items() + [('nickname', p.nickname)])
+        for p in leaderboard
+    ]
 
     return {'leaderboard': ret}
 
@@ -470,6 +473,43 @@ def explore_badges(request):
             auth_principals=effective_principals(request),
             awarded_assertions=awarded_assertions,
             )
+
+
+@view_config(route_name='explore_badges_rss')
+def explore_badges_rss(request):
+    """ Render rss feed for the latest badges. """
+
+    newest_badges = sorted(request.db.get_all_badges().all(),
+                           key=lambda badge: badge.created_on,
+                           reverse=True)[:20]
+
+    feed = feedgenerator.Rss201rev2Feed(
+        title=u"Newest badges Feed",
+        link=request.route_url('explore_badges_rss'),
+        description=u"Latest badges of the application",
+        language=u"en",
+    )
+
+    description_template = "<img src='%s' alt='%s' />%s"
+
+    for badge in newest_badges:
+        url = request.route_url('badge', id=badge.id)
+        feed.add_item(
+            title="New badge: %s !" % badge.name,
+            link=url,
+            pubdate=badge.created_on,
+            description=description_template % (
+                badge.image,
+                badge.name,
+                badge.description,
+            )
+        )
+
+    return Response(
+        body=feed.writeString('utf-8'),
+        content_type='application/rss+xml',
+        charset='utf-8',
+    )
 
 
 @view_config(route_name='badge', renderer='badge.mak')
@@ -779,7 +819,7 @@ def user(request):
                    if i.expires_on > datetime.now()]
 
     # Get rank. (same code found in leaderboard view function)
-    rank = user.rank
+    rank = user.rank or 0
     user_count = request.db.session.query(m.Person)\
         .filter(m.Person.opt_out == False).count()
 

@@ -7,12 +7,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1,
                                    maximum-scale=1" />
     <!-- end viewport stuff -->
-    <link rel="stylesheet" href="${request.static_url('tahrir:static/css/tahrir.css')}" />
-    <link rel="stylesheet" href="${request.static_url('tahrir:static/css/monokai.css')}" />
-    <link rel="stylesheet" media="mobile" href="${request.static_url('tahrir:static/css/unsemantic-grid-mobile.css')}" />
-    <link rel="stylesheet" media="screen" href="${request.static_url('tahrir:static/css/unsemantic-grid-responsive.css')}" />
-    <link rel="shortcut icon" href="${request.static_url('tahrir:static/img/favicon.ico')}" />
-    <script src="${request.static_url('tahrir:static/js/social.js')}"></script>
+    <link rel="stylesheet" href="${request.static_url('%s:static/css/tahrir.css' % theme_name)}" />
+    <link rel="stylesheet" href="${request.static_url('%s:static/css/monokai.css' % theme_name)}" />
+    <link rel="stylesheet" media="mobile" href="${request.static_url('%s:static/css/unsemantic-grid-mobile.css' % theme_name)}" />
+    <link rel="stylesheet" media="screen" href="${request.static_url('%s:static/css/unsemantic-grid-responsive.css' % theme_name)}" />
+    <link rel="shortcut icon" href="${request.static_url('%s:static/img/favicon.ico' % theme_name)}" />
+    <script src="${request.static_url('%s:static/js/social.js' % theme_name)}"></script>
     % if logged_in and awarded_assertions:
       <script src="//beta.openbadges.org/issuer.js"></script>
       <script>
@@ -43,6 +43,10 @@
     <link rel="alternate" type="application/json" title="JSON" href="${request.url}/json" />
     % endif
 
+    %if newest_badges:
+    <link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="${request.url}/rss" />
+    % endif
+
     % if user:
     <link rel="alternate" type="application/rdf" title="RDF+FOAF" href="${request.url}/foaf" />
     % endif
@@ -53,10 +57,8 @@
         <div class="header clearfix grid-100">
           <h1>
             <a href="${request.route_url('home')}">
-              <img
-                 src="${request.static_url('tahrir:static/img/fedora_badges_small.png')}"
-                 alt="Fedora Badges logo"
-                 class="logo-image"/>
+            <div id="site-logo">
+            </div>
             </a>
           </h1>
         </div>

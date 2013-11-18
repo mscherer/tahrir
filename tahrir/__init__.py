@@ -123,7 +123,7 @@ def main(global_config, **settings):
 
     config.add_static_view(
         'static',
-        settings.get('tahrir.static.uri', 'static'),
+        settings.get('tahrir.theme_name', 'tahrir') + ':static',
         cache_max_age=3600,
     )
     config.add_static_view(
@@ -142,6 +142,7 @@ def main(global_config, **settings):
     config.add_route('about', '/about')
     config.add_route('explore', '/explore')
     config.add_route('explore_badges', '/explore/badges')
+    config.add_route('explore_badges_rss', '/explore/badges/rss')
     config.add_route('leaderboard', '/leaderboard')
     config.add_route('leaderboard_json', '/leaderboard/json')
     config.add_route('rank_json', '/leaderboard/{id}/json')
