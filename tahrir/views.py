@@ -1,3 +1,4 @@
+import re
 import random
 import transaction
 import types
@@ -123,7 +124,7 @@ def invite(request):
 
     # OK
     request.db.add_invitation(
-        badge.id, expires_on=expires_on, created_by=agent.id)
+        badge.id, expires_on=expires_on, created_by_email=agent.email)
 
     return HTTPFound(location=request.route_url('user', id=agent.id))
 
@@ -155,6 +156,7 @@ def admin(request):
                                             'person-website'),
                                   bio=request.POST.get(
                                             'person-bio'))
+            request.session.flash('You added a person with email %s' % request.POST.get('person-email'))
         elif request.POST.get('add-badge'):
             # Add a Badge to the DB.
             request.db.add_badge(request.POST.get('badge-name'),
@@ -163,6 +165,7 @@ def admin(request):
                                  request.POST.get('badge-criteria'),
                                  request.POST.get('badge-issuer'),
                                  request.POST.get('badge-tags'))
+            request.session.flash('You added a badge with name %s' % request.POST.get('badge-name'))
         elif request.POST.get('add-invitation'):
             # Add an Invitation to the DB.
             try:
@@ -183,7 +186,8 @@ def admin(request):
                     request.POST.get('invitation-badge-id'),
                     created_on=created_on,
                     expires_on=expires_on,
-                    created_by=request.POST.get('invitation-issuer-id'))
+                    created_by_email=request.POST.get('invitation-issuer-email'))
+            request.session.flash('You added an invitation for badge %s' % request.POST.get('invitation-badge-id'))
         elif request.POST.get('add-issuer'):
             # Add an Issuer to the DB.
             request.db.add_issuer(
@@ -191,6 +195,7 @@ def admin(request):
                     request.POST.get('issuer-name'),
                     request.POST.get('issuer-org'),
                     request.POST.get('issuer-contact'))
+            request.session.flash('You added an issuer with the name %s' % request.POST.get('issuer-name'))
         elif request.POST.get('add-assertion'):
             # Add an Assertion to the DB.
             try:
@@ -204,14 +209,17 @@ def admin(request):
                     request.POST.get('assertion-badge-id'),
                     request.POST.get('assertion-person-email'),
                     issued_on)
+            request.session.flash('You awarded %s to %s' % (request.POST.get('assertion-badge-id'), request.POST.get('assertion-person-email')))
         elif request.POST.get('add-authorization'):
             request.db.add_authorization(
                     request.POST.get('authorization-badge-id'),
                     request.POST.get('authorization-person-email'))
+            request.session.flash('You authorized %s to issue %s' % (request.POST.get('authorization-person-email'), request.POST.get('authorization-badge-id')))
 
     return dict(
         auth_principals=effective_principals(request),
         awarded_assertions=awarded_assertions,
+        issuers=request.db.get_all_issuers().all(),
     )
 
 
@@ -304,7 +312,7 @@ def invitation_claim(request):
 
     # Check to see if the user already has the badge.
     if request.context.badge in [a.badge for a in person.assertions]:
-        # TODO: Flash a message explaining that they already have the badge
+        request.session.flash("You already have " + request.context.badge_id + " badge")
         return HTTPFound(location=request.route_url('home'))
 
     result = request.db.add_assertion(request.context.badge_id,
@@ -312,7 +320,7 @@ def invitation_claim(request):
                                       datetime.utcnow())
 
     # TODO -- return them to a page that auto-exports their badges.
-    # TODO -- flash and tell them they got the badge
+    request.session.flash("You have earned " + request.context.badge_id + " badge")
     return HTTPFound(location=request.route_url('home'))
 
 
@@ -1339,6 +1347,11 @@ def login_complete_view(request):
     context = request.context
     settings = request.registry.settings
 
+    trusted_openid = settings.get('tahrir.trusted_openid')
+    trusted_openid = re.compile(trusted_openid)
+    if not trusted_openid.match(context.profile['accounts'][0]['username']):
+        return HTTPForbidden("Invalid openid provider")
+
     nickname = context.profile['preferredUsername']
 
     if asbool(settings.get('tahrir.use_openid_email')) \
@@ -1412,21 +1425,22 @@ def make_websocket_handler(settings):
         topic = settings.get("tahrir.websocket.topic")
         onmessage = """
         (function(json){
-            // TODO -- put the DOM manipulation stuff here.
-            var user = json.msg.user.badges_user_id;
-            var badge = json.msg.badge.badge_id;
-            $.ajax({
-                url: "%s/_w/assertion/" + user + "/" + badge,
-                dataType: "html",
-                success: function (html) {
-                    $("#latest-awards").prepend(html);
-                    $("#latest-awards > div:first-child").hide();
-                    $("#latest-awards > div:first-child").slideDown("slow");
-                    $("#latest-awards > div:last-child").slideUp('slow', complete=function() {
-                        $("#latest-awards > div:last-child").remove();
-                    });
-                }
-            });
+            setTimeout(function() {
+                var user = json.msg.user.badges_user_id;
+                var badge = json.msg.badge.badge_id;
+                $.ajax({
+                    url: "%s/_w/assertion/" + user + "/" + badge,
+                    dataType: "html",
+                    success: function (html) {
+                        $("#latest-awards").prepend(html);
+                        $("#latest-awards > div:first-child").hide();
+                        $("#latest-awards > div:first-child").slideDown("slow");
+                        $("#latest-awards > div:last-child").slideUp('slow', complete=function() {
+                            $("#latest-awards > div:last-child").remove();
+                        });
+                    }
+                });
+            }, 250)
         })(json);
         """ % settings['tahrir.base_url']
         backend = "websocket"
