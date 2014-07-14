@@ -26,13 +26,13 @@
           return urls;
         }
         function claim_badges() {
-          var callback = function(errors, successes) {
-          // Do nothing.
-          //console.log(errors);
-          //console.log(successes);
-          };
           var urls = badge_urls();
-          OpenBadges.issue(urls, callback);
+          % if request.registry.settings.get('tahrir.openbadges_modal', 'true').lower() == 'true':
+          var lolback = function(errors, successes) {};
+          OpenBadges.issue(urls, lolback);
+          % else:
+          OpenBadges.issue_no_modal(urls);
+          % endif
         }
       </script>
     % endif
@@ -95,7 +95,7 @@
         <div class="clearfix"></div>
         % endif
 
-        ${self.body()}
+        ${next.body()}
 
 
         <!-- End of flash message template -->

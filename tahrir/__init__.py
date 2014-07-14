@@ -153,8 +153,10 @@ def main(global_config, **settings):
 
     config.add_route('qrcode', '/qrcode')
     config.add_route('badge', '/badge/{id}')
+    config.add_route('badge_full', '/badge/{id}/full')
     config.add_route('badge_json', '/badge/{id}/json')
     config.add_route('badge_rss', '/badge/{id}/rss')
+    config.add_route('badge_stl', '/badge/{id}/stl')
     config.add_route('builder', '/builder')
     config.add_route('about', '/about')
     config.add_route('explore', '/explore')
@@ -177,6 +179,7 @@ def main(global_config, **settings):
                      '/report/{year}/week/{weeknumber}')
     config.add_route('report_year_month_day',
                      '/report/{year}/{month}/{day}')
+    config.add_route('award_from_csv', '/award_from_csv')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
 
