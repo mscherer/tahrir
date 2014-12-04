@@ -7,7 +7,7 @@ README = open(os.path.join(here, 'README.rst')).read()
 
 requires = [
     'pyramid<1.5a1',
-    'tahrir_api >= 0.2.0',
+    'tahrir_api >= 0.7.2',
     'SQLAlchemy >= 0.8.0',
     'transaction',
     'pyramid_tm',
@@ -33,7 +33,7 @@ requires = [
     ]
 
 setup(name='tahrir',
-      version='0.7.0',
+      version='0.7.2',
       description='A pyramid app for issuing your own Open Badges',
       long_description=README,
       license="AGPLv3+ with additional permission",
@@ -46,7 +46,7 @@ setup(name='tahrir',
         ],
       author='Ralph Bean',
       author_email='rbean@redhat.com',
-      url='http://github.com/fedora-infra/tahrir',
+      url='https://github.com/fedora-infra/tahrir',
       keywords='web wsgi bfg pylons pyramid badges open fedbadges',
       packages=find_packages(),
       include_package_data=True,
