@@ -74,6 +74,10 @@ def award(request):
     if not request.POST:
         return HTTPMethodNotAllowed()
 
+    token = request.session.get_csrf_token()
+    if token != request.POST['csrf_token']:
+        raise HTTPForbidden('CSRF token did not match')
+
     agent = request.db.get_person(authenticated_userid(request))
     if not agent:
         raise HTTPForbidden()
@@ -105,6 +109,10 @@ def invite(request):
     if not request.POST:
         return HTTPMethodNotAllowed()
 
+    token = request.session.get_csrf_token()
+    if token != request.POST['csrf_token']:
+        raise HTTPForbidden('CSRF token did not match')
+
     agent = request.db.get_person(authenticated_userid(request))
     if not agent:
         raise HTTPForbidden()
@@ -130,9 +138,35 @@ def invite(request):
     return HTTPFound(location=request.route_url('user', id=agent.id))
 
 
+@view_config(route_name='add_tag', renderer='string', permission='admin')
+def add_tag(request):
+    if not request.POST:
+        return HTTPMethodNotAllowed()
+
+    token = request.session.get_csrf_token()
+    if token != request.POST['csrf_token']:
+        raise HTTPForbidden('CSRF token did not match')
+
+    agent = request.db.get_person(authenticated_userid(request))
+    if not agent:
+        raise HTTPForbidden()
+
+    badge_id = request.POST.get('badge_id')
+    badge = request.db.get_badge(badge_id)
+    if not badge:
+        raise HTTPNotFound("No such badge %r" % badge_id)
+
+    tags = request.POST.get('tags', '')
+    new_tags = [tag.strip() for tag in tags.strip().split(',') if tag.strip()]
+    originals = [tag.strip() for tag in badge.tags.split(',') if tag.strip()]
+    badge.tags = ",".join(set(originals + new_tags)) + ","
+    request.db.session.flush()
+
+    return HTTPFound(location=request.route_url('badge', id=badge.id))
+
+
 @view_config(route_name='admin', renderer='admin.mak', permission='admin')
 def admin(request):
-
     settings = request.registry.settings
 
     # TODO: Check if I even need this anymore... leaving for now.
@@ -147,6 +181,10 @@ def admin(request):
     # Handle any admin actions. These are done through POSTS via the
     # HTML forms on the admin panel.
     if request.POST:
+        token = request.session.get_csrf_token()
+        if token != request.POST['csrf_token']:
+            raise HTTPForbidden('CSRF token did not match')
+
         if request.POST.get('add-person'):
             # Email is a required field on the HTML form.
             # Add a Badge to the DB.
@@ -260,12 +298,6 @@ def index(request):
 
     n = 5  # n is the number of items displayed in each column.
 
-    if authenticated_userid(request):
-        awarded_assertions = request.db.get_assertions_by_email(
-                                 authenticated_userid(request))
-    else:
-        awarded_assertions = None
-
     # set came_from so we can get back home after openid auth.
     request.session['came_from'] = request.route_url('home')
 
@@ -276,24 +308,20 @@ def index(request):
         .limit(n)\
         .all()
 
-    newest_persons = request.db.get_all_persons()\
-        .filter(m.Person.opt_out == False)\
-        .order_by(sa.desc(m.Person.created_on))\
-        .limit(n)\
-        .all()
+    start = get_start_week()
+    stop = start + timedelta(days=6)
+    weekly_leaders = request.db._make_leaderboard(
+        start=start,
+        stop=stop,
+    )
 
-    person_count = request.db.session.query(m.Person)\
-        .filter(m.Person.opt_out == False)\
-        .count()
-    top_ten_percent = int(person_count * 0.10) + 1
-
-    top_persons_sample = request.db.session.query(m.Person)\
-        .order_by(m.Person.rank)\
-        .limit(top_ten_percent)\
-        .from_self()\
-        .order_by(func.random())\
-        .limit(n)\
-        .all()
+    now = datetime.utcnow()
+    start = date(now.year, now.month, 1)
+    stop = date(now.year, now.month + 1, 1) - timedelta(days=1)
+    monthly_leaders = request.db._make_leaderboard(
+        start=start,
+        stop=stop,
+    )
 
     # Register our websocket handler callback
     if asbool(request.registry.settings['tahrir.use_websockets']):
@@ -303,10 +331,10 @@ def index(request):
     return dict(
         auth_principals=effective_principals(request),
         latest_awards=latest_awards,
-        newest_persons=newest_persons,
-        top_persons_sample=top_persons_sample,
-        awarded_assertions=awarded_assertions,
+        weekly_leaders=weekly_leaders,
+        monthly_leaders=monthly_leaders,
         moksha_socket=get_moksha_socket(request.registry.settings),
+        n=n,
     )
 
 
@@ -488,6 +516,10 @@ def explore(request):
     search_query = None
     search_results = dict() # name: link
     if request.POST:
+        token = request.session.get_csrf_token()
+        if token != request.POST['csrf_token']:
+            raise HTTPForbidden('CSRF token did not match')
+
         if request.POST.get('badge-search'):
             # badge-query is a required field on the template form.
             search_query = request.POST.get('badge-query')
@@ -909,6 +941,8 @@ def user(request):
     user_id = request.matchdict.get('id')
     user = _get_user(request, user_id)
 
+    history_limit = int(request.params.get('history_limit', 10))
+
     if not user:
         raise HTTPNotFound("No such user %r" % user_id)
 
@@ -916,6 +950,10 @@ def user(request):
         raise HTTPNotFound("User %r has opted out." % user_id)
 
     if request.POST:
+
+        token = request.session.get_csrf_token()
+        if token != request.POST['csrf_token']:
+            raise HTTPForbidden('CSRF token did not match')
 
         # Authz check
         if authenticated_userid(request) != user.email:
@@ -969,6 +1007,7 @@ def user(request):
             rank=rank,
             percentile=percentile,
             user_count=user_count,
+            history_limit=history_limit,
             )
 
 
@@ -990,6 +1029,10 @@ def user_edit(request):
     user = _get_user(request, request.matchdict.get('id'))
 
     if request.POST:
+
+        token = request.session.get_csrf_token()
+        if token != request.POST['csrf_token']:
+            raise HTTPForbidden('CSRF token did not match')
 
         # Authz check
         if authenticated_userid(request) != user.email:
@@ -1191,6 +1234,9 @@ def builder(request):
 
     badge_yaml = None
     if request.POST:
+        token = request.session.get_csrf_token()
+        if token != request.POST['csrf_token']:
+            raise HTTPForbidden('CSRF token did not match')
         badge_yaml = generate_badge_yaml(request.POST)
 
     return dict(
@@ -1361,8 +1407,20 @@ def report_year_week(request):
     )
 
 
+@view_config(route_name='report_this_month')
+def report_this_month(request):
+    now = datetime.utcnow()
+    year, month = now.year, now.month
+    location = request.route_url('report_year_month', year=year, month=month)
+    return HTTPFound(location=location)
+
+
 @view_config(route_name='award_from_csv', permission='admin')
 def award_from_csv(request):
+    token = request.session.get_csrf_token()
+    if token != request.POST['csrf_token']:
+        raise HTTPForbidden('CSRF token did not match')
+
     csv_file = request.POST['csv-file'].file
     successful_awards = 0
     '''TODO: We need some validation here, and flash
@@ -1533,7 +1591,7 @@ def make_websocket_handler(settings):
                         });
                     }
                 });
-            }, 250)
+            }, 1000)
         })(json);
         """ % settings['tahrir.base_url']
         backend = "websocket"

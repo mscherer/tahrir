@@ -109,6 +109,13 @@
                type="submit"
                value="Change Avatar" />
           </form>
+          <form method="GET" action="https://apps.fedoraproject.org/notifications/${user.nickname}.id.fedoraproject.org">
+            <input
+               class="pretty-submit"
+               style="height: 50px; width: 100%;"
+               type="submit"
+               value="Manage Notifications" />
+          </form>
           <form method="GET" action="${request.route_url('user_edit', id=user.nickname or user.id)}">
             <input
                class="pretty-submit"
@@ -118,6 +125,7 @@
           </form>
           % if user.opt_out:
             <form method="POST">
+              <input type="hidden" name="csrf_token" value="${request.session.get_csrf_token()}"/>
               <input
                  class="pretty-submit"
                  style="height: 50px; width: 100%;"
@@ -127,6 +135,7 @@
             </form>
           % else:
             <form method="POST">
+              <input type="hidden" name="csrf_token" value="${request.session.get_csrf_token()}"/>
               <input
                  class="pretty-submit"
                  style="height: 50px;"
@@ -148,11 +157,11 @@
     </div> <!-- End shadow. -->
 
     % if user.assertions:
-    <div class="shadow">
+    <div class="shadow mobile-hidden">
       <h1 class="section-header">History</h1>
       <div class="padded-content clearfix">
         <div class="grid-container">
-          % for assertion in sorted(user.assertions, key=lambda a: a.issued_on, reverse=True):
+          % for assertion in sorted(user.assertions, key=lambda a: a.issued_on, reverse=True)[:history_limit]:
             ${self.functions.badge_thumbnail(assertion.badge, 64, 33)}
             <div class="grid-66 text-64"><p>received on ${assertion.issued_on.strftime('%Y-%m-%d')}
               % if assertion.issued_for:
@@ -160,6 +169,13 @@
               % endif
               </p></div>
           % endfor
+          % if history_limit < len(user.assertions):
+          <div class="grid-66 text-64"><p>
+            This is only the last ${history_limit} entries.
+            <a href="${request.route_url('user', id=user.nickname or user.id, _query=dict(history_limit=len(user.assertions)))}">
+              Click here to see all of them</a>.
+          </p></div>
+          % endif
         </div>
       </div> <!-- End padded content. -->
     </div> <!-- End shadow. -->
@@ -172,33 +188,42 @@
     <div class="shadow">
       <h1 class="section-header">Badges Earned</h1>
       <div class="padded-content">
-        <div class="grid-container">
-          <div style="text-align: center; font-size: 1.2em; padding: 20px;">
-            % if len(user_badges) < 1:
-              % if user.email == logged_in:
-                <p>You have not earned any badges yet!</p>
-              % else:
-                <p>${user.nickname} has not earned any badges yet!</p>
-              % endif
+        <div style="text-align: center; font-size: 1.2em; padding: 20px;">
+          % if len(user_badges) < 1:
+            % if user.email == logged_in:
+              <p>You have not earned any badges yet!</p>
             % else:
-              % if user.email == logged_in:
-                <p>You have earned
-              % else:
-                <p>${user.nickname} has earned
-              % endif
-              <strong>${len(user_badges)}</strong>
-              ${'badge' if len(user_badges) == 1 else 'badges'}
-              (<strong>${"{0:.1f}".format(percent_earned)}%</strong> of total).
+              <p>${user.nickname} has not earned any badges yet!</p>
             % endif
-          </div>
-          % for i, badge in enumerate(user_badges):
-            % if i % 3 == 0 and i != 0:
-              </div>
-              <div class="grid-container">
+          % else:
+            % if user.email == logged_in:
+              <p>You have earned
+            % else:
+              <p>${user.nickname} has earned
             % endif
-            ${self.functions.badge_thumbnail(badge, 128, 33)}
+            <strong>${len(user_badges)}</strong>
+            ${'badge' if len(user_badges) == 1 else 'badges'}
+            (<strong>${"{0:.1f}".format(percent_earned)}%</strong> of total).
+          % endif
+        </div>
+        % for tag in request.registry.settings.get('tahrir.display_tags', '').split(","):
+        % if tag in sum([badge.tags.strip(",").split(",") for badge in user_badges], []):
+        <h3 class="section-header">${tag.title()} Badges</h3>
+        <div class="flex-container">
+          % for badge in [b for b in user_badges if tag in b.tags.strip(",").split(",")]:
+            ${self.functions.badge_thumbnail_flex(badge, 128, 33)}
           % endfor
         </div>
+        % endif
+        % endfor
+        % if any([badge for badge in user_badges if not any([tag in request.registry.settings.get('tahrir.display_tags', '').split(",") for tag in badge.tags.strip(",").split(",")])]):
+        <h3 class="section-header">Uncategorized Badges</h3>
+        <div class="flex-container">
+          % for badge in [b for b in user_badges if not any([tag in request.registry.settings.get('tahrir.display_tags', '').split(",") for tag in b.tags.strip(",").split(",")])]:
+            ${self.functions.badge_thumbnail_flex(badge, 128, 33)}
+          % endfor
+        </div>
+        % endif
       </div>
     </div> <!-- End padded content. -->
   </div> <!-- End shadow. -->

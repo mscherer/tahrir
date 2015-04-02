@@ -150,6 +150,7 @@ def main(global_config, **settings):
     # delegated admin endpoints
     config.add_route('award', '/award')
     config.add_route('invite', '/invite')
+    config.add_route('add_tag', '/add_tag')
 
     config.add_route('qrcode', '/qrcode')
     config.add_route('badge', '/badge/{id}')
@@ -173,6 +174,7 @@ def main(global_config, **settings):
     config.add_route('user_foaf', '/user/{id}/foaf')
     config.add_route('diff', '/diff/{id_a}/{id_b}')
     config.add_route('report', '/report')
+    config.add_route('report_this_month', '/report/this/month')
     config.add_route('report_year', '/report/{year}')
     config.add_route('report_year_month', '/report/{year}/{month}')
     config.add_route('report_year_week',
