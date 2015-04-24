@@ -201,16 +201,17 @@ def admin(request):
             else:
                 request.session.flash("Person with email {0} already exists.".format(email))
         elif request.POST.get('add-badge'):
-            idx = badge_name_to_id(request.POST.get('badge-name'))
+            name = request.POST.get('badge-name')
+            idx = badge_name_to_id(name)
             if not request.db.badge_exists(idx):
                 # Add a Badge to the DB.
-                request.db.add_badge(idx,
+                request.db.add_badge(name,
                                      request.POST.get('badge-image'),
                                      request.POST.get('badge-description'),
                                      request.POST.get('badge-criteria'),
                                      request.POST.get('badge-issuer'),
                                      request.POST.get('badge-tags'))
-                request.session.flash('You added a badge with name %s' % request.POST.get('badge-name'))
+                request.session.flash('You added a badge with name %s' % name)
             else:
                 request.session.flash("Badge with id {0} already exists.".format(idx))
 
@@ -459,6 +460,7 @@ def leaderboard(request):
 def leaderboard_json(request):
     """ Render a top-users JSON dump. """
 
+    limit = int(request.params.get('limit', 25))
     user_id = request.matchdict.get('id')
     user = None
     if user_id:
@@ -490,7 +492,7 @@ def leaderboard_json(request):
 
         leaderboard = leaderboard[(idx - 2):(idx + 3)]
     else:
-        leaderboard = leaderboard[:25]
+        leaderboard = leaderboard[:limit]
 
     ret = [
         dict(user_to_rank[p].items() + [('nickname', p.nickname)])
