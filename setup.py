@@ -9,7 +9,7 @@ requires = [
     'pyramid',
     'pyramid_mako',
     'tahrir_api',
-    'SQLAlchemy >= 0.8.2',
+    'SQLAlchemy >= 0.9.0',
     'transaction',
     'pyramid_tm',
     'zope.sqlalchemy',
@@ -21,7 +21,8 @@ requires = [
     "python-dateutil",
     "moksha.wsgi>=1.2.1",
     "webhelpers",
-    "rdflib",
+    "requests",
+    "rdflib<=4.1.2",
 
     # For qrcode to work from PyPI, you also need Pillow.
     # This is handled for us in Fedora because python-qrcode pulls in the
@@ -34,7 +35,7 @@ requires = [
     ]
 
 setup(name='tahrir',
-      version='0.8.2',
+      version='0.9.0',
       description='A pyramid app for issuing your own Open Badges',
       long_description=README,
       license="AGPLv3+ with additional permission",

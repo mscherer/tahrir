@@ -31,7 +31,7 @@
 
           % if rank != 0:
             <p>
-              Ranked ${rank} out of ${user_count} ranked users (top ${"{0:.1f}".format(percentile)}%).</p>
+              Ranked ${rank} out of ${user_count} ranked users (top ${"{0:.2f}".format(percentile)}%).</p>
           % else:
             <p>Not ranked yet.</p>
           % endif
@@ -165,7 +165,7 @@
             ${self.functions.badge_thumbnail(assertion.badge, 64, 33)}
             <div class="grid-66 text-64"><p>received on ${assertion.issued_on.strftime('%Y-%m-%d')}
               % if assertion.issued_for:
-              for <a target="_blank" href="${assertion.issued_for}">this activity</a>
+              for <a href="${assertion.issued_for}">this activity</a>
               % endif
               </p></div>
           </div>

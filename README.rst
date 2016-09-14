@@ -16,6 +16,8 @@ You can see Tahrir deployed in production `here
 (On the side, if you have ideas for new *Fedora* badges, you can file them on
 `this trac instance <https://fedorahosted.org/fedora-badges/>`_.)
 
+The development team hangs out in ``#fedora-apps`` on freenode.  Join and ask
+if you have any questions!
 
 Installing... just to try it out
 --------------------------------
@@ -93,7 +95,7 @@ https://admin.fedoraproject.org/accounts. Make sure you have Python 2.7 or
 above installed on your system. Then, install the Python version of
 virtualenvwrapper (in Fedora)::
 
-	$ sudo yum -y install python-virtualenvwrapper
+	$ sudo dnf -y install python-virtualenvwrapper
 
 In Ubuntu, you can do the same with::
 
@@ -107,9 +109,9 @@ first time::
 
     $ export WORKON_HOME=~/.virtualenvs/
     $ mkdir -p $WORKON_HOME
-    $ source /usr/local/bin/virtualenvwrapper.sh
+    $ source /usr/bin/virtualenvwrapper.sh
 
-You'll want to add ``source /usr/local/bin/virtualenvwrapper.sh`` to
+You'll want to add ``source /usr/bin/virtualenvwrapper.sh`` to
 your ``.bashrc``.
 
 Then, to set up Tahrir, follow these steps::
@@ -118,8 +120,8 @@ Then, to set up Tahrir, follow these steps::
 	$ cd tahrir
 	$ mkvirtualenv tahrir
 	(tahrir)$ python setup.py develop
-	(tahrir)$ cp development.ini.sample development.ini
-	(tahrir)$ cp secret.ini.sample secret.ini
+	(tahrir)$ cp development.ini.example development.ini
+	(tahrir)$ cp secret.ini.example secret.ini
 	(tahrir)$ initialize_tahrir_db development.ini
 	(tahrir)$ pserve --reload development.ini
 
