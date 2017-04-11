@@ -97,7 +97,7 @@ def _get_user_badge_info(request, user):
 
     try:
         percentile = Decimal(float(rank) / float(user_count)).quantize(
-            Decimal('.01'), rounding=ROUND_UP)
+            Decimal('.0001'), rounding=ROUND_UP) * 100
     except ZeroDivisionError:
         percentile = 0
 
@@ -107,7 +107,7 @@ def _get_user_badge_info(request, user):
         percent_earned=percent_earned,
         rank=rank,
         user_count=user_count,
-        percentile=str(percentile)
+        percentile=percentile
     )
 
 
@@ -1151,7 +1151,7 @@ def _user_json_generator(request, user):
         'avatar': user.avatar_url(int(request.GET.get('size', 100))),
         'percent_earned': user_info['percent_earned'],
         'assertions': assertions,
-        'percentile': user_info['percentile'],
+        'percentile': str(user_info['percentile']),
         'rank': user_info['rank'],
         'user_count': user_info['user_count'],
     }
@@ -1167,16 +1167,17 @@ def _user_team_json_generator(request, team, user):
     assertions = user.assertions
     assertion_ids = set([assertion.badge_id for assertion in assertions])
 
+    series_info = []
     for elem in series:
-        series_info = []
-
+        milestones_info = []
         milestones = elem.milestone
         for milestone in milestones:
-            series_info.append({
+            milestones_info.append({
                 'milestone': milestone.__json__(),
                 'series': elem.__json__(),
                 'is_awarded': milestone.badge_id in assertion_ids
             })
+        series_info.append(milestones_info)
 
     return {
         'badges_count': badges_count,
@@ -1437,6 +1438,7 @@ def report_year_month(request):
     year = int(request.matchdict.get('year'))
     month = int(request.matchdict.get('month'))
 
+    now = datetime.utcnow()
     start = date(year, month, 1)
     if now.month == 12:
         stop = date(year + 1, 1, 1) - timedelta(days=1)
