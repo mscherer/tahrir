@@ -197,6 +197,7 @@ def main(global_config, **settings):
 
     config.scan()
 
+    print('Running until here')
     return config.make_wsgi_app()
 
 
