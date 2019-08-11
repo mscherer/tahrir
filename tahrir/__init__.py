@@ -56,9 +56,10 @@ def main(global_config, **settings):
     tahrir_api.model.Assertion.issued_on_rel =\
             make_relative_time_property('issued_on')
 
+    print(settings.get('sqlalchemy.url', os.environ.get('SQLALCHEMY_URL', '')))
     session_cls = scoped_session(sessionmaker(
         extension=ZopeTransactionExtension(),
-        bind=create_engine(settings['sqlalchemy.url']),
+        bind=create_engine(settings.get('sqlalchemy.url', os.environ.get('SQLALCHEMY_URL', '')))
     ))
 
     def get_db(request):
