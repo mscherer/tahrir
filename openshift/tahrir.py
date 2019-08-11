@@ -8,6 +8,12 @@ pkg_resources.require(__requires__)
 
 import os
 os.environ['PYTHON_EGG_CACHE'] = '/var/www/.python-eggs'
+os.environ['SQLALCHEMY_URL'] = '%s://%s:%s@%s/%s' % \
+    (os.getenv('DATABASE_ENGINE'), \
+    os.getenv('DATABASE_USER'), \
+    os.getenv('DATABASE_PASSWORD'), \
+    os.getenv('DATABASE_SERVICE_NAME'), \
+    os.getenv('DATABASE_NAME'))
 
 from pyramid.paster import get_app, setup_logging
 d = os.path.dirname(os.path.realpath(__file__))
